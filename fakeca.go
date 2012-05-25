@@ -23,7 +23,7 @@ var (
 		"The name used for various purposes.")
 	maxAge = flag.Duration(
 		"max-age",
-		time.Hour*24*365*5,
+		time.Hour*24*365*10,
 		"The validity period of he certificate.")
 )
 
