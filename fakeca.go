@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"os"
 	"time"
+	"github.com/kr/pretty"
 )
 
 var (
@@ -24,7 +25,7 @@ var (
 	maxAge = flag.Duration(
 		"max-age",
 		time.Hour*24*365*10,
-		"The validity period of he certificate.")
+		"The validity period of the certificate.")
 )
 
 func certFileName() string {
@@ -36,7 +37,7 @@ func keyFileName() string {
 }
 
 func genCACert() {
-	priv, err := rsa.GenerateKey(rand.Reader, 1024)
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		log.Fatalf("failed to generate private key: %s", err)
 		return
@@ -48,13 +49,13 @@ func genCACert() {
 		SerialNumber: new(big.Int).SetInt64(0),
 		Subject: pkix.Name{
 			CommonName:   *baseName,
-			Organization: []string{*baseName},
 		},
-		NotBefore:    now.Add(-5 * time.Minute).UTC(),
-		NotAfter:     now.Add(*maxAge),
-		IsCA:         true,
-		SubjectKeyId: []byte{1, 2, 3, 4},
-		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		NotBefore:             now.Add(-5 * time.Minute).UTC(),
+		NotAfter:              now.Add(*maxAge),
+		IsCA:                  true,
+		SubjectKeyId:          []byte{1, 2, 3, 4},
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
 	}
 
 	derBytes, err := x509.CreateCertificate(
@@ -78,8 +79,10 @@ func genCACert() {
 		log.Print("Failed to open "+keyFileName()+" for writing:", err)
 		return
 	}
-	pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(priv)})
+	pem.Encode(keyOut, &pem.Block{
+		Type: "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(priv),
+	})
 	keyOut.Close()
 	log.Print("Written " + keyFileName() + "\n")
 }
@@ -97,7 +100,7 @@ func showCert() {
 	if err != nil {
 		log.Fatalf("Failed to parse certificate in " + certFileName())
 	}
-	log.Printf("%+v", caCert)
+	pretty.Printf("%# v\n", caCert)
 }
 
 func main() {
