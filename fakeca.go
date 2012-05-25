@@ -54,7 +54,7 @@ func genCACert() {
 		NotAfter:              now.Add(*maxAge),
 		IsCA:                  true,
 		SubjectKeyId:          []byte{1, 2, 3, 4},
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 		BasicConstraintsValid: true,
 	}
 
