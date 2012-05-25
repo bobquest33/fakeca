@@ -19,7 +19,7 @@ import (
 var (
 	baseName = flag.String(
 		"name",
-		os.Getenv("USER") + " CA",
+		os.Getenv("USER")+" CA",
 		"The name used for various purposes.")
 	maxAge = flag.Duration(
 		"max-age",
