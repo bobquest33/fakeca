@@ -9,12 +9,12 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"flag"
+	"github.com/kr/pretty"
 	"io/ioutil"
 	"log"
 	"math/big"
 	"os"
 	"time"
-	"github.com/kr/pretty"
 )
 
 var (
@@ -48,7 +48,7 @@ func genCACert() {
 	template := x509.Certificate{
 		SerialNumber: new(big.Int).SetInt64(0),
 		Subject: pkix.Name{
-			CommonName:   *baseName,
+			CommonName: *baseName,
 		},
 		NotBefore:             now.Add(-5 * time.Minute).UTC(),
 		NotAfter:              now.Add(*maxAge),
@@ -80,7 +80,7 @@ func genCACert() {
 		return
 	}
 	pem.Encode(keyOut, &pem.Block{
-		Type: "RSA PRIVATE KEY",
+		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(priv),
 	})
 	keyOut.Close()
@@ -104,6 +104,7 @@ func showCert() {
 }
 
 func main() {
+	flag.Parse()
 	genCACert()
 	showCert()
 }
