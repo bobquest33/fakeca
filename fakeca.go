@@ -14,13 +14,14 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"strings"
 	"time"
 )
 
 var (
 	baseName = flag.String(
 		"name",
-		os.Getenv("USER")+" CA",
+		strings.Title(os.Getenv("USER")+" CA"),
 		"The name used for various purposes.")
 	maxAge = flag.Duration(
 		"max-age",
