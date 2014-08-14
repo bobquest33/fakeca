@@ -21,6 +21,8 @@ import (
 	"github.com/kr/pretty"
 )
 
+const maxAge = time.Hour * 24 * 365 * 10
+
 var (
 	location = flag.String(
 		"dir",
@@ -30,10 +32,6 @@ var (
 		"name",
 		strings.Title(os.Getenv("USER")+" CA"),
 		"The name used for various purposes.")
-	maxAge = flag.Duration(
-		"max-age",
-		time.Hour*24*365*10,
-		"The validity period of the certificate.")
 )
 
 func defaultLocation() string {
@@ -67,7 +65,7 @@ func genCACert() {
 			CommonName: *baseName,
 		},
 		NotBefore:             now.Add(-5 * time.Minute).UTC(),
-		NotAfter:              now.Add(*maxAge),
+		NotAfter:              now.Add(maxAge),
 		IsCA:                  true,
 		SubjectKeyId:          []byte{1, 2, 3, 4},
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
