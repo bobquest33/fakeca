@@ -18,43 +18,31 @@ import (
 	"strings"
 	"time"
 
+	"github.com/facebookgo/stackerr"
 	"github.com/kr/pretty"
 )
 
-const maxAge = time.Hour * 24 * 365 * 10
-
-var (
-	location = flag.String(
-		"dir",
-		defaultLocation(),
-		"Default location to store root certificate and key.")
-	baseName = flag.String(
-		"name",
-		strings.Title(os.Getenv("USER")+" CA"),
-		"The name used for various purposes.")
-)
-
-func defaultLocation() string {
-	u, _ := user.Current()
-	if u != nil {
-		return filepath.Join(u.HomeDir, ".ca")
-	}
-	return ""
+type Generator struct {
+	MaxAge       time.Duration
+	RootLocation string
+	RootName     string
 }
 
-func certFileName() string {
-	return filepath.Join(*location, *baseName+" Certificate.pem")
+func (g *Generator) certFileName() string {
+	return filepath.Join(g.RootLocation, g.RootName+" Certificate.pem")
 }
 
-func keyFileName() string {
-	return filepath.Join(*location, *baseName+" Key.pem")
+func (g *Generator) keyFileName() string {
+	return filepath.Join(g.RootLocation, g.RootName+" Key.pem")
 }
 
-func genCACert() {
+func (g *Generator) genCACert() error {
+	certFileName := g.certFileName()
+	keyFileName := g.keyFileName()
+
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		log.Fatalf("failed to generate private key: %s", err)
-		return
+		return stackerr.Wrap(err)
 	}
 
 	now := time.Now()
@@ -62,10 +50,10 @@ func genCACert() {
 	template := x509.Certificate{
 		SerialNumber: new(big.Int).SetInt64(0),
 		Subject: pkix.Name{
-			CommonName: *baseName,
+			CommonName: g.RootName,
 		},
 		NotBefore:             now.Add(-5 * time.Minute).UTC(),
-		NotAfter:              now.Add(maxAge),
+		NotAfter:              now.Add(g.MaxAge),
 		IsCA:                  true,
 		SubjectKeyId:          []byte{1, 2, 3, 4},
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
@@ -75,50 +63,76 @@ func genCACert() {
 	derBytes, err := x509.CreateCertificate(
 		rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
-		log.Fatalf("Failed to create CA Certificate: %s", err)
-		return
+		return stackerr.Wrap(err)
 	}
 
-	certOut, err := os.Create(certFileName())
+	certOut, err := os.Create(certFileName)
 	if err != nil {
-		log.Fatalf("Failed to open "+certFileName()+" for writing: %s", err)
-		return
+		return stackerr.Wrap(err)
 	}
 	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	certOut.Close()
-	log.Print("Written " + certFileName() + "\n")
+	log.Print("Written " + certFileName + "\n")
 
-	keyOut, err := os.OpenFile(keyFileName(), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile(keyFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		log.Print("Failed to open "+keyFileName()+" for writing:", err)
-		return
+		return stackerr.Wrap(err)
 	}
 	pem.Encode(keyOut, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(priv),
 	})
 	keyOut.Close()
-	log.Print("Written " + keyFileName() + "\n")
+	log.Print("Written " + keyFileName + "\n")
+	return nil
 }
 
-func showCert() {
-	certIn, err := ioutil.ReadFile(certFileName())
+func (g *Generator) showCert() {
+	certFileName := g.certFileName()
+
+	certIn, err := ioutil.ReadFile(certFileName)
 	if err != nil {
-		log.Fatalf("Failed to open "+certFileName()+" for reading: %s", err)
+		log.Fatalf("Failed to open "+certFileName+" for reading: %s", err)
 	}
 	b, _ := pem.Decode(certIn)
 	if b == nil {
-		log.Fatalf("Failed to find a certificate in " + certFileName())
+		log.Fatalf("Failed to find a certificate in " + certFileName)
 	}
 	caCert, err := x509.ParseCertificate(b.Bytes)
 	if err != nil {
-		log.Fatalf("Failed to parse certificate in " + certFileName())
+		log.Fatalf("Failed to parse certificate in " + certFileName)
 	}
 	pretty.Printf("%# v\n", caCert)
 }
 
+func defaultLocation() string {
+	u, _ := user.Current()
+	if u != nil {
+		return filepath.Join(u.HomeDir, ".ca")
+	}
+	return ""
+}
+
 func main() {
+	g := Generator{
+		MaxAge: time.Hour * 24 * 365 * 10,
+	}
+
+	flag.StringVar(
+		&g.RootLocation,
+		"dir",
+		defaultLocation(),
+		"Default location to store root certificate and key.")
+	flag.StringVar(
+		&g.RootName,
+		"name",
+		strings.Title(os.Getenv("USER")+" CA"),
+		"The name used for various purposes.")
+
 	flag.Parse()
-	genCACert()
-	showCert()
+
+	if err := g.genCACert(); err != nil {
+		log.Fatal(err)
+	}
+	g.showCert()
 }
