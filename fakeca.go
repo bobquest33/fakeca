@@ -9,16 +9,23 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"flag"
-	"github.com/kr/pretty"
 	"io/ioutil"
 	"log"
 	"math/big"
 	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/kr/pretty"
 )
 
 var (
+	location = flag.String(
+		"dir",
+		defaultLocation(),
+		"Default location to store root certificate and key.")
 	baseName = flag.String(
 		"name",
 		strings.Title(os.Getenv("USER")+" CA"),
@@ -29,12 +36,20 @@ var (
 		"The validity period of the certificate.")
 )
 
+func defaultLocation() string {
+	u, _ := user.Current()
+	if u != nil {
+		return filepath.Join(u.HomeDir, ".ca")
+	}
+	return ""
+}
+
 func certFileName() string {
-	return *baseName + " Certificate.pem"
+	return filepath.Join(*location, *baseName+" Certificate.pem")
 }
 
 func keyFileName() string {
-	return *baseName + " Key.pem"
+	return filepath.Join(*location, *baseName+" Key.pem")
 }
 
 func genCACert() {
