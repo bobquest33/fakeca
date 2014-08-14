@@ -28,11 +28,11 @@ type Generator struct {
 }
 
 func (g *Generator) certFileName() string {
-	return filepath.Join(g.RootLocation, g.RootName+" Certificate.pem")
+	return filepath.Join(g.RootLocation, "root-cert.pem")
 }
 
 func (g *Generator) keyFileName() string {
-	return filepath.Join(g.RootLocation, g.RootName+" Key.pem")
+	return filepath.Join(g.RootLocation, "root-key.pem")
 }
 
 func (g *Generator) genRootCA() error {
